@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp Bot</title>
+<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#0b141a; color:#e9edef; padding:20px; box-sizing:border-box; }
+  .box { text-align:center; padding:36px 32px; border-radius:18px; background:#111b21; box-shadow:0 10px 30px rgba(0,0,0,.4); max-width:440px; width:100%; }
+  .icon-wrap { display:inline-flex; align-items:center; justify-content:center; width:72px; height:72px; border-radius:50%; background:rgba(37,211,102,.12); margin-bottom:12px; }
+  ion-icon { font-size:44px; color:#25d366; }
+  .spin { animation:spin 2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 { margin:0 0 8px; font-size:22px; }
+  p { margin:8px 0; color:#8696a0; font-size:14px; line-height:1.5; }
+  .state { color:#e9edef; font-weight:600; }
+  .meta { margin-top:14px; font-size:12px; color:#5c6b73; }
+  img { width:100%; max-width:340px; border-radius:12px; background:#fff; padding:12px; margin-top:12px; box-sizing:border-box; }
+  .steps { text-align:left; display:inline-block; margin-top:16px; color:#8696a0; font-size:13px; line-height:1.8; }
+  .steps ion-icon { font-size:16px; vertical-align:-3px; margin-right:6px; color:#25d366; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div id="connected" class="hidden">
+    <div class="icon-wrap"><ion-icon name="checkmark-circle-outline"></ion-icon></div>
+    <h1>WhatsApp is connected</h1>
+    <p>No QR needed. The bot is ready to send messages.</p>
+    <div class="meta" id="connectedAt"></div>
+  </div>
+  <div id="waiting" class="hidden">
+    <div class="icon-wrap"><ion-icon name="sync-outline" class="spin"></ion-icon></div>
+    <h1>Waiting for QR</h1>
+    <p>Connection state: <span class="state" id="connState"></span></p>
+    <p>This page refreshes automatically.</p>
+  </div>
+  <div id="qrView" class="hidden">
+    <div class="icon-wrap"><ion-icon name="qr-code-outline"></ion-icon></div>
+    <h1>Scan to connect WhatsApp</h1>
+    <p>This QR refreshes automatically every 20 seconds.</p>
+    <img id="qrImg" alt="WhatsApp QR" />
+    <div class="steps">
+      <div><ion-icon name="phone-portrait-outline"></ion-icon>Open WhatsApp on your phone</div>
+      <div><ion-icon name="settings-outline"></ion-icon>Tap Settings, then Linked Devices</div>
+      <div><ion-icon name="link-outline"></ion-icon>Tap Link a Device</div>
+      <div><ion-icon name="scan-outline"></ion-icon>Scan this QR</div>
+    </div>
+  </div>
+</div>
+<script>
+async function refresh() {
+  try {
+    const r = await fetch('/qr-data', { cache: 'no-store' });
+    const d = await r.json();
+    document.getElementById('connected').classList.add('hidden');
+    document.getElementById('waiting').classList.add('hidden');
+    document.getElementById('qrView').classList.add('hidden');
+    if (d.ready) {
+      document.getElementById('connectedAt').textContent = 'Connected at: ' + (d.connectedAt || 'unknown');
+      document.getElementById('connected').classList.remove('hidden');
+      if (Notification.permission === 'granted') {
+        new Notification('WhatsApp bot connected');
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then((p) => {
+          if (p === 'granted') new Notification('WhatsApp bot connected');
+        });
+      }
+    } else if (d.qr) {
+      document.getElementById('qrImg').src = d.qr;
+      document.getElementById('qrView').classList.remove('hidden');
+    } else {
+      document.getElementById('connState').textContent = d.state || 'starting';
+      document.getElementById('waiting').classList.remove('hidden');
+    }
+  } catch (e) {
+    document.getElementById('connState').textContent = 'error';
+    document.getElementById('waiting').classList.remove('hidden');
+  }
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
